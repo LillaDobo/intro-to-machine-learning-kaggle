@@ -1,7 +1,23 @@
 # %%
 import pandas as pd
-house_data = pd.read_csv('train.csv')
-house_data.describe()
+home_data = pd.read_csv('train.csv')
+home_data.describe()
+
+home_data.columns
+y = home_data.SalePrice
+
+feature_names = ['LotArea','YearBuilt','1stFlrSF','2ndFlrSF','FullBath','BedroomAbvGr','TotRmsAbvGrd']
+X = home_data[feature_names]
+
+print(X.describe())
+print(X.head())
+
+from sklearn.tree import DecisionTreeRegressor
+iowa_model = DecisionTreeRegressor(random_state=6)
+iowa_model.fit(X,y)
+
+predictions = iowa_model.predict(X)
+print(predictions)
 # %%
 print(house_data.describe())
 
