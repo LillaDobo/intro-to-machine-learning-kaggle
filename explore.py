@@ -45,4 +45,16 @@ print("Making predictions for the following 5 houses: ")
 print(x.head())
 print("The predictions are  ")
 print(melbourne_model.predict(x.head()))
+
+
+from sklearn.metrics import mean_absolute_error
+predicted_home_prices = melbourne_model.predict(x)
+mean_absolute_error(y,predicted_home_prices)
+
+from sklearn.model_selection import train_test_split
+train_x,val_x, train_y,val_y = train_test_split(x,y, random_state=0)
+melbourne_model1 = DecisionTreeRegressor()
+melbourne_model1.fit(train_x,train_y)
+val_predictions = melbourne_model1.fit(val_x)
+print(mean_absolute_error(val_y,val_predictions))
 # %%
