@@ -1,28 +1,5 @@
 # %%
-import pandas as pd
-home_data = pd.read_csv('train.csv')
-home_data.describe()
 
-home_data.columns
-y = home_data.SalePrice
-
-feature_names = ['LotArea','YearBuilt','1stFlrSF','2ndFlrSF','FullBath','BedroomAbvGr','TotRmsAbvGrd']
-X = home_data[feature_names]
-
-print(X.describe())
-print(X.head())
-
-from sklearn.tree import DecisionTreeRegressor
-iowa_model = DecisionTreeRegressor(random_state=6)
-iowa_model.fit(X,y)
-
-predictions = iowa_model.predict(X)
-print(predictions)
-# %%
-print(house_data.describe())
-
-avg_lot_size = round(house_data.LotArea.mean(),0)
-newest_home_age = 2026 - house_data.YearBuilt.max()
 # %%
 import pandas as pd
 melbourne_data = pd.read_csv('melb_data.csv')
@@ -55,6 +32,43 @@ from sklearn.model_selection import train_test_split
 train_x,val_x, train_y,val_y = train_test_split(x,y, random_state=0)
 melbourne_model1 = DecisionTreeRegressor()
 melbourne_model1.fit(train_x,train_y)
-val_predictions = melbourne_model1.fit(val_x)
+val_predictions = melbourne_model1.predict(val_x)
 print(mean_absolute_error(val_y,val_predictions))
 # %%
+import pandas as pd
+home_data = pd.read_csv('train.csv')
+home_data.describe()
+
+print(home_data.describe())
+
+avg_lot_size = round(home_data.LotArea.mean(),0)
+newest_home_age = 2026 - home_data.YearBuilt.max()
+home_data.columns
+y = home_data.SalePrice
+
+feature_names = ['LotArea','YearBuilt','1stFlrSF','2ndFlrSF','FullBath','BedroomAbvGr','TotRmsAbvGrd']
+X = home_data[feature_names]
+
+print(X.describe())
+print(X.head())
+
+
+
+from sklearn.tree import DecisionTreeRegressor
+iowa_model = DecisionTreeRegressor(random_state=6)
+iowa_model.fit(X,y)
+
+predictions = iowa_model.predict(X)
+print(predictions)
+
+from sklearn.model_selection import train_test_split
+train_X,val_X,train_y,val_y = train_test_split(X,y,random_state=1)
+
+iowa_model1 = DecisionTreeRegressor(random_state=1)
+iowa_model1.fit(train_X,train_y)
+val_predictions = iowa_model.predict(val_X)
+
+from sklearn.metrics import mean_absolute_error
+val_mae = mean_absolute_error(val_y,val_predictions)
+
+print(val_mae)
