@@ -107,3 +107,11 @@ final_model = DecisionTreeRegressor(max_leaf_nodes=best_tree_size,random_state=1
 final_model.fit(X,y)
 print(final_model)
 
+from sklearn.ensemble import RandomForestRegressor
+rf_model = RandomForestRegressor(random_state=1)
+rf_model.fit(train_X,train_y)
+rf_pred = rf_model.predict(val_X)
+rf_val_mae = mean_absolute_error(val_y,rf_pred)
+print("Validation MAE for Random Forest Model: {}".format(rf_val_mae))
+
+
