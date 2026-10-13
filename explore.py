@@ -62,8 +62,6 @@ X = home_data[feature_names]
 print(X.describe())
 print(X.head())
 
-
-
 from sklearn.tree import DecisionTreeRegressor
 iowa_model = DecisionTreeRegressor(random_state=6)
 iowa_model.fit(X,y)
@@ -82,3 +80,23 @@ from sklearn.metrics import mean_absolute_error
 val_mae = mean_absolute_error(val_y,val_predictions)
 
 print(val_mae)
+
+def get_mea(max_leaf_nodes,train_X, val_X, train_y, val_y):
+    model = DecisionTreeRegressor(max_leaf_nodes=max_leaf_nodes,random_state=0)
+    model.fit(train_X,train_y)
+    preds_val = model.predict(val_X)
+    mae = mean_absolute_error(val_y,preds_val)
+    return(mae)
+
+candidate_max_leaf_nodes = [5,25,50,100,250,500]
+results = []
+for max_leaf_nodes in candidate_max_leaf_nodes:
+    my_mae = get_mae(max_leaf_nodes,train_X,val_X,train_y,val_y)
+    results.append((my_mae,max_leaf_nodes))
+
+best_tree_size = min(results)[1]
+
+final_model = DecisionTreeRegressor(max_leaf_nodes=best_tree_size,random_state=1)
+final_model.fit(X,y)
+print(final_model)
+
