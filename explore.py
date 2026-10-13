@@ -34,6 +34,16 @@ melbourne_model1 = DecisionTreeRegressor()
 melbourne_model1.fit(train_x,train_y)
 val_predictions = melbourne_model1.predict(val_x)
 print(mean_absolute_error(val_y,val_predictions))
+
+def get_mae(max_leaf_nodes, train_x, val_x, train_y, val_y):
+    model = DecisionTreeRegressor(max_leaf_nodes=max_leaf_nodes,random_state=0)
+    model.fit(train_x, train_y)
+    preds_val = model.predict(val_x)
+    mae = mean_absolute_error(val_y,preds_val)
+    return(mae)
+for max_leaf_nodes in [5,50,500,5000]:
+    my_mae = get_mae(max_leaf_nodes, train_x,val_x,train_y, val_y)
+    print("My leaf nodes: %d \t\t Mean Absolut Error:  %d" %(max_leaf_nodes,my_mae))
 # %%
 import pandas as pd
 home_data = pd.read_csv('train.csv')
