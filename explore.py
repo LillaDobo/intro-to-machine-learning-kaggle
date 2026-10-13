@@ -1,6 +1,5 @@
 # %%
-
-# %%
+# megértést segítő feladatok
 import pandas as pd
 melbourne_data = pd.read_csv('melb_data.csv')
 
@@ -44,7 +43,15 @@ def get_mae(max_leaf_nodes, train_x, val_x, train_y, val_y):
 for max_leaf_nodes in [5,50,500,5000]:
     my_mae = get_mae(max_leaf_nodes, train_x,val_x,train_y, val_y)
     print("My leaf nodes: %d \t\t Mean Absolut Error:  %d" %(max_leaf_nodes,my_mae))
+
+from sklearn.ensemble import RandomForestRegressor
+
+forest_model = RandomForestRegressor(random_state=1)
+forest_model.fit(train_x, train_y)
+melb_preds_forest = forest_model.predict(val_x)
+print(mean_absolute_error(val_y,melb_preds_forest))
 # %%
+# gyakorló feladatok
 import pandas as pd
 home_data = pd.read_csv('train.csv')
 home_data.describe()
