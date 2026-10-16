@@ -147,4 +147,3 @@ test_data = pd.read_csv('test.csv')
 test_X = test_data[features]
 test_preds = rf_model_on_full_data.predict(test_X)
 test_preds
-# %%
