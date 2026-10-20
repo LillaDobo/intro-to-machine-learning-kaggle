@@ -385,7 +385,7 @@ label_X_train[good_label_cols] = oe.fit_transform(X_train[good_label_cols])
 label_X_valid[good_label_cols] = oe.transform(X_valid[good_label_cols])
 
 print("MAE from Approach 2 (Ordinal Encoding):") 
-print(score_dataset(label_X_train, label_X_valid, y_train, y_valid))
+#print(score_dataset(label_X_train, label_X_valid, y_train, y_valid))
 
 # Get number of unique entries in each column with categorical data
 object_nunique = list(map(lambda col: X_train[col].nunique(), object_cols))
@@ -434,4 +434,106 @@ OH_X_train.columns = OH_X_train.columns.astype(str)
 OH_X_valid.columns = OH_X_valid.columns.astype(str)
 
 print("MAE from Approach 3 (One-Hot Encoding):") 
-print(score_dataset(OH_X_train, OH_X_valid, y_train, y_valid))
+#print(score_dataset(OH_X_train, OH_X_valid, y_train, y_valid))
+
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Read the data
+X_full = pd.read_csv('train.csv', index_col='Id')
+X_test_full = pd.read_csv('test.csv', index_col='Id')
+
+# Remove rows with missing target, separate target from predictors
+X_full.dropna(axis=0, subset=['SalePrice'], inplace=True)
+y = X_full.SalePrice
+X_full.drop(['SalePrice'], axis=1, inplace=True)
+
+# Break off validation set from training data
+X_train_full, X_valid_full, y_train, y_valid = train_test_split(X_full, y, 
+                                                                train_size=0.8, test_size=0.2,
+                                                                random_state=0)
+
+# "Cardinality" means the number of unique values in a column
+# Select categorical columns with relatively low cardinality (convenient but arbitrary)
+categorical_cols = [cname for cname in X_train_full.columns if
+                    X_train_full[cname].nunique() < 10 and 
+                    X_train_full[cname].dtype == "object"]
+
+# Select numerical columns
+numerical_cols = [cname for cname in X_train_full.columns if 
+                X_train_full[cname].dtype in ['int64', 'float64']]
+
+# Keep selected columns only
+my_cols = categorical_cols + numerical_cols
+X_train = X_train_full[my_cols].copy()
+X_valid = X_valid_full[my_cols].copy()
+X_test = X_test_full[my_cols].copy()
+
+
+X_train.head()
+
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error
+
+# Preprocessing for numerical data
+numerical_transformer = SimpleImputer(strategy='constant')
+
+# Preprocessing for categorical data
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Bundle preprocessing for numerical and categorical data
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+# Define model
+model = RandomForestRegressor(n_estimators=100, random_state=0)
+
+# Bundle preprocessing and modeling code in a pipeline
+clf = Pipeline(steps=[('preprocessor', preprocessor),
+                      ('model', model)
+                     ])
+
+# Preprocessing of training data, fit model 
+clf.fit(X_train, y_train)
+
+# Preprocessing of validation data, get predictions
+preds = clf.predict(X_valid)
+
+print('MAE:', mean_absolute_error(y_valid, preds))
+
+numerical_transformer = SimpleImputer(strategy='constant')
+categorical_transformer = OneHotEncoder(handle_unknown='ignore')
+
+preprocessor = ColumnTransformer(transformers=[
+    ('num', numerical_transformer,numerical_cols),
+    ('cat', categorical_transformer, categorical_cols)
+])
+
+model = RandomForestRegressor(n_estimators=100, random_state=0)
+
+my_pipline = Pipeline(steps=[('preprocessor', preprocessor),
+                             ('model', model)])
+
+my_pipline.fit(X_train, y_train)
+preds = my_pipline.predict(X_valid)
+
+score = mean_absolute_error(y_valid,preds)
+print('MAE:', score)
+
+preds_test = my_pipline.predict(X_test)
+
+output = pd.DataFrame({'Id': X_test.index,
+                       'SalePrice': preds_test})
+output.to_csv('submission.csv', index=False)
+# %%
