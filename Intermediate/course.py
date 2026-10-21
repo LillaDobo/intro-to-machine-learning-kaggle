@@ -208,6 +208,30 @@ preds = my_pipline.predict(X_valid)
 score = mean_absolute_error(y_valid,preds)
 print('MAE:', score)
 
+
+# Read the data
+data = pd.read_csv('melb_data.csv')
+
+# Select subset of predictors
+cols_to_use = ['Rooms', 'Distance', 'Landsize', 'BuildingArea', 'YearBuilt']
+X = data[cols_to_use]
+
+# Select target
+y = data.Price
+
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+
+my_pipline = Pipeline(steps=[('preprocessor', SimpleImputer()),
+                             ('model', RandomForestRegressor(n_estimators=50, random_state=0))])
+
+from sklearn.model_selection import cross_val_score
+scores = -1 * cross_val_score(my_pipline,X,y, cv=5, scoring='neg_mean_absolute_error')
+print("MAE scores:\n", scores)
+
+print("Average MAE score (across experiments):")
+print(scores.mean())
 # %%
 #gyak
 X_full = pd.read_csv('train.csv',index_col='Id')
