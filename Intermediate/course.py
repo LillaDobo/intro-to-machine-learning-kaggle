@@ -737,4 +737,3 @@ my_model_3.fit(X_train,y_train)
 predictions_3 = my_model_3.predict(X_valid)
 mae_3 = mean_absolute_error(y_valid,predictions_3)
 print("Mean Absolute Error:" , mae_3)
-# %%
