@@ -29,4 +29,32 @@ score = -1 * score.mean()
 
 print(f"MAE Score with Ratio Features: {score:.4}")
 
+#Matual Information
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+# Source - https://stackoverflow.com/a/78339240
+# Posted by Alejandro Sa
+# Retrieved 2026-10-31, License - CC BY-SA 4.0
+
+plt.style.use("seaborn-v0_8-whitegrid")
+
+
+df = pd.read_csv("autos.csv")
+df.head()
+X = df.copy()
+y = X.pop('price')
+
+for colname in X.select_dtypes("object"):
+    X[colname], _ = X[colname].factorize()
+
+discrete_features = X.dtypes == int
+
+from sklearn.feature_selection import mutual_info_regression
+def make_mi_scores(X,y, discerte_features):
+    mi_scores = mutual_info_regression(X,y,discrete_features=discerte_features)
+    mi_scores = pd.Series(mi_scores, name="Mi Scores", index = X.columns)
+    
+
 # %%
