@@ -116,12 +116,12 @@ autos["displacement"] = (
     np.pi * ((0.5 * autos.bore) ** 2) * autos.stroke * autos.num_of_cylinders
 )
 
-accidents["LogWindSpeed"] = accidents.WindSpeed.apply(np.log1p)
+# accidents["LogWindSpeed"] = accidents.WindSpeed.apply(np.log1p)
 
-# Plot a comparison
-fig, axs = plt.subplots(1, 2, figsize=(8, 4))
-sns.kdeplot(accidents.WindSpeed, shade=True, ax=axs[0])
-sns.kdeplot(accidents.LogWindSpeed, shade=True, ax=axs[1]);
+# # Plot a comparison
+# fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+# sns.kdeplot(accidents.WindSpeed, shade=True, ax=axs[0])
+# sns.kdeplot(accidents.LogWindSpeed, shade=True, ax=axs[1]);
 
 
 roadway_features = ["Amenity", "Bump", "Crossing", "GiveWay",
