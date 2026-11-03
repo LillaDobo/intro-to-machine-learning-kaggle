@@ -92,7 +92,7 @@ plt.rc(
     titlepad=10,
 )
 
-accidents = pd.read_csv("accidents.csv")
+#accidents = pd.read_csv("accidents.csv")
 autos = pd.read_csv("autos.csv", na_values="?")
 autos = autos.dropna()
 autos.columns = autos.columns.str.replace("-", "_")
@@ -127,9 +127,9 @@ autos["displacement"] = (
 roadway_features = ["Amenity", "Bump", "Crossing", "GiveWay",
     "Junction", "NoExit", "Railway", "Roundabout", "Station", "Stop",
     "TrafficCalming", "TrafficSignal"]
-accidents["RoadwayFeatures"] = accidents[roadway_features].sum(axis=1)
+#accidents["RoadwayFeatures"] = accidents[roadway_features].sum(axis=1)
 
-accidents[roadway_features + ["RoadwayFeatures"]].head(10)
+#accidents[roadway_features + ["RoadwayFeatures"]].head(10)
 
 
 components = [ "Cement", "BlastFurnaceSlag", "FlyAsh", "Water",
