@@ -132,7 +132,7 @@ roadway_features = ["Amenity", "Bump", "Crossing", "GiveWay",
 #accidents[roadway_features + ["RoadwayFeatures"]].head(10)
 
 
-components = [ "Cement", "BlastFurnaceSlag", "FlyAsh", "Water",
+components = [ "Cement", "BlastFurnace", "FlyAsh", "Water",
                "Superplasticizer", "CoarseAggregate", "FineAggregate"]
 concrete["Components"] = concrete[components].gt(0).sum(axis=1)
 
@@ -172,7 +172,7 @@ df_train = customer.sample(frac=0.5)
 df_valid = customer.drop(df_train.index)
 
 # Create the average claim amount by coverage type, on the training set
-df_train["AverageClaim"] = df_train.groupby("Coverage")["ClaimAmount"].transform("mean")
+df_train["AverageClaim"] = df_train.groupby("Coverage")["Total Claim Amount"].transform("mean")
 
 # Merge the values into the validation set
 df_valid = df_valid.merge(
@@ -185,7 +185,7 @@ df_valid[["Coverage", "AverageClaim"]].head(10)
 
 from sklearn.cluster import KMeans
 
-plt.style.use("seaborn-whitegrid")
+plt.style.use("seaborn-v0_8-whitegrid")
 plt.rc("figure", autolayout=True)
 plt.rc(
     "axes",
@@ -196,16 +196,17 @@ plt.rc(
     titlepad=10,
 )
 
-df = pd.read_csv("/housing.csv")
-X = df.loc[:, ["MedInc", "Latitude", "Longitude"]]
+df = pd.read_csv("housing.csv")
+X = df.loc[:, ["median_income", "latitude", "longitude"]]
 X.head()
 kmeans = KMeans(n_clusters=6)
 X["Cluster"] = kmeans.fit_predict(X)
 X["Cluster"] = X["Cluster"].astype("category")
-sns.regplot(
-    x="Longitude",y="Latitude", hue="Cluster", data=X, height=6
+sns.relplot(
+    x="longitude",y="latitude", hue="Cluster", data=X, height=6
 )
-
+X["MedHouseVal"] = df["median_house_value"]
+sns.catplot(x="MedHouseVal", y="Cluster", data=X, kind="boxen", height=6);
 
 # %%
 #feladat
