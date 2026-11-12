@@ -253,7 +253,8 @@ def make_mi_scores(X, y, discrete_features):
     return mi_scores
 
 
-df = pd.read_csv("autos.csv")
+df = pd.read_csv("autos.csv", na_values="?")
+df = df.dropna(subset=["horsepower", "price"]).reset_index(drop=True)
 
 features = ["highway_mpg", "engine_size", "horsepower", "curb_weight"]
 X = df.copy()
@@ -266,7 +267,7 @@ pca = PCA()
 X_pca = pca.fit_transform(X_scaled)
 component_names = [f"PC{i+1}" for i in range(X_pca.shape[1])]
 X_pca = pd.DataFrame(X_pca, columns=component_names)
-X_pca().head()
+X_pca.head()
 
 loadings = pd.DataFrame(
     pca.components_.T,
