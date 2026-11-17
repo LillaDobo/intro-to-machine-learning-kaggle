@@ -287,6 +287,46 @@ df.loc[idx, cols]
 df["sports_or_wagon"] = X.curb_weight / X.horsepower
 sns.regplot(x="sports_or_wagon", y='price', data=df, order=2);
 
+autos["make_encoded"] = autos.groupby("make")['price'].transform('mean')
+autos[['make','price','make_encoded']].head(10)
+
+# import warnings
+
+# plt.style.use("seaborn-v0_8-whitegrid")
+# plt.rc("figure", autolayout=True)
+# plt.rc(
+#     "axes",
+#     labelweight="bold",
+#     labelsize="large",
+#     titleweight="bold",
+#     titlesize=14,
+#     titlepad=10,
+# )
+# warnings.filterwarnings('ignore')
+
+
+# df = pd.read_csv("movie.csv")
+# df = df.astype(np.uint8, errors='ignore') # reduce memory footprint
+# print("Number of Unique Zipcodes: {}".format(df["Zipcode"].nunique()))
+
+# X = df.copy()
+# y = X.pop('Rating')
+# X_encode = X.sample(frac=0.25)
+# y_encode = y[X_encode.index]
+# X_pretrain = X.drop(X_encode.index)
+# y_train = y[X_pretrain.index]
+
+# from category_encoders import MEstimateEncoder
+# encoder = MEstimateEncoder(cols=["Zipcode"], m=5.0)
+# encoder.fit(X_encode,y_encode)
+# X_train = encoder.transform(X_pretrain)
+
+# plt.figure(dpi=90)
+# ax = sns.distplot(y, kde=False, norm_hist=True)
+# ax = sns.kdeplot(X_train.Zipcode, color='r', ax=ax)
+# ax.set_xlabel("Rating")
+# ax.legend(labels=['Zipcode', 'Rating']);
+
 # %%
 #feladat
 
@@ -614,6 +654,92 @@ component = "PC1"
 idx = X_pca[component].sort_values(ascending=False).index
 df.loc[idx, ["SalePrice", "Neighborhood", "SaleCondition"] + features]
 
+import warnings
+from category_encoders import MEstimateEncoder
+
+
+# Set Matplotlib defaults
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rc("figure", autolayout=True)
+plt.rc(
+    "axes",
+    labelweight="bold",
+    labelsize="large",
+    titleweight="bold",
+    titlesize=14,
+    titlepad=10,
+)
+warnings.filterwarnings('ignore')
+
+
+def score_dataset(X, y, model=XGBRegressor()):
+    # Label encoding for categoricals
+    for colname in X.select_dtypes(["category", "object"]):
+        X[colname], _ = X[colname].factorize()
+    # Metric for Housing competition is RMSLE (Root Mean Squared Log Error)
+    score = cross_val_score(
+        model, X, y, cv=5, scoring="neg_mean_squared_log_error",
+    )
+    score = -1 * score.mean()
+    score = np.sqrt(score)
+    return score
+
+
+df = pd.read_csv("ames.csv")
+df.select_dtypes(["object"]).nunique()
+df["SaleType"].value_counts()
+
+X_encode = df.sample(frac=0.20, random_state=0)
+y_encode = X_encode.pop("SalePrice")
+
+# Training split
+X_pretrain = df.drop(X_encode.index)
+y_train = X_pretrain.pop("SalePrice")
+
+encoder = MEstimateEncoder(
+    cols=["Neighborhood"],
+    m=1.0,
+)
+encoder.fit(X_encode, y_encode)
+X_train = encoder.transform(X_pretrain, y_train)
+
+feature = encoder.cols
+
+plt.figure(dpi=90)
+ax = sns.distplot(y_train, kde=True, hist=False)
+ax = sns.distplot(X_train[feature], color='r', ax=ax, hist=True, kde=False, norm_hist=True)
+ax.set_xlabel("SalePrice");
+
+X = df.copy()
+y = X.pop("SalePrice")
+score_base = score_dataset(X, y)
+score_new = score_dataset(X_train, y_train)
+
+print(f"Baseline Score: {score_base:.4f} RMSLE")
+print(f"Score with Encoding: {score_new:.4f} RMSLE")
+
+m = 50
+
+X = df.copy()
+y = X.pop('SalePrice')
+
+# Create an uninformative feature
+X["Count"] = range(len(X))
+X["Count"][1] = 0  # actually need one duplicate value to circumvent error-checking in MEstimateEncoder
+
+# fit and transform on the same dataset
+encoder = MEstimateEncoder(cols="Count", m=m)
+X = encoder.fit_transform(X, y)
+
+# Results
+score =  score_dataset(X, y)
+print(f"Score: {score:.4f} RMSLE")
+
+
+plt.figure(dpi=90)
+ax = sns.distplot(y, kde=True, hist=False)
+ax = sns.distplot(X["Count"], color='r', ax=ax, hist=True, kde=False, norm_hist=True)
+ax.set_xlabel("SalePrice");
 
 
 # %%
