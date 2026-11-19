@@ -1,0 +1,11 @@
+# Large datasets
+train.csv
+accidents.csv
+
+# Python temporary files
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
