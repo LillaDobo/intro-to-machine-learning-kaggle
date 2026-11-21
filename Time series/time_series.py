@@ -109,6 +109,71 @@ ax.set_title('Lag Plot of Tunnel Traffic');
 ax = y.plot(**plot_params)
 ax = y_pred.plot()
 
+#2 trend
+# Set Matplotlib defaults
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rc("figure", autolayout=True, figsize=(11, 5))
+plt.rc(
+    "axes",
+    labelweight="bold",
+    labelsize="large",
+    titleweight="bold",
+    titlesize=14,
+    titlepad=10,
+)
+plot_params = dict(
+    color="0.75",
+    style=".-",
+    markeredgecolor="0.25",
+    markerfacecolor="0.25",
+    legend=False,
+)
+
+
+# Load Tunnel Traffic dataset
+tunnel = pd.read_csv("tunnel.csv", parse_dates=["Day"])
+tunnel = tunnel.set_index("Day").to_period()
+
+moving_average = tunnel.rolling(
+    window=365,       # 365-day window
+    center=True,      # puts the average at the center of the window
+    min_periods=183,  # choose about half the window size
+).mean()              # compute the mean (could also do median, std, min, max, ...)
+
+ax = tunnel.plot(style=".", color="0.5")
+moving_average.plot(
+    ax=ax, linewidth=3, title="Tunnel Traffic - 365-Day Moving Average", legend=False,
+);
+
+from statsmodels.tsa.deterministic import DeterministicProcess
+dp = DeterministicProcess(
+    index=tunnel.index,  # dates from the training data
+    constant=True,       # dummy feature for the bias (y_intercept)
+    order=1,             # the time dummy (trend)
+    drop=True,           # drop terms if necessary to avoid collinearity
+)
+# `in_sample` creates features for the dates given in the `index` argument
+X = dp.in_sample()
+
+X.head()
+
+from sklearn.linear_model import LinearRegression
+
+y = tunnel["NumVehicles"]  # the target
+model = LinearRegression(fit_intercept=False)
+model.fit(X, y)
+
+y_pred = pd.Series(model.predict(X), index=X.index)
+ax = tunnel.plot(style=".", color="0.5", title="Tunnel Traffic - Linear Trend")
+_ = y_pred.plot(ax=ax, linewidth=3, label="Trend")  
+X = dp.out_of_sample(steps=30)
+y_fore = pd.Series(model.predict(X), index=X.index)
+y_fore.head()
+
+ax = tunnel["2005-05":].plot(title="Tunnel Traffic - Linear Trend Forecast", **plot_params)
+ax = y_pred["2005-05":].plot(ax=ax, linewidth=3, label="Trend")
+ax = y_fore.plot(ax=ax, linewidth=3, label="Trend Forecast", color="C3")
+_ = ax.legend()
 
 #%%
 #gyak
@@ -187,4 +252,96 @@ fig, ax = plt.subplots()
 ax.plot(X['lag_1'], y, '.', color='0.25')
 ax.plot(X['lag_1'], y_pred)
 ax.set(aspect='equal', ylabel='sales', xlabel='lag_1', title='Lag Plot of Average Sales');
+
+
+#trend
+
+retail_sales = pd.read_csv("us-retail-sales.csv",
+    parse_dates=['Month'],
+    index_col='Month',
+).to_period('D')
+food_sales = retail_sales.loc[:, 'FoodAndBeverage']
+auto_sales = retail_sales.loc[:, 'Automobiles']
+
+dtype = {
+    'store_nbr': 'category',
+    'family': 'category',
+    'sales': 'float32',
+    'onpromotion': 'uint64',
+}
+
+store_sales = pd.read_csv('train.csv',
+    dtype=dtype,
+    parse_dates=['date'],
+)
+store_sales = store_sales.set_index('date').to_period('D')
+store_sales = store_sales.set_index(['store_nbr', 'family'], append=True)
+average_sales = store_sales.groupby('date').mean()['sales']
+
+ax = food_sales.plot(**plot_params)
+ax.set(title="US Food and Beverage Sales", ylabel="Millions of Dollars");
+
+trend = food_sales.rolling(
+    window=12,
+    center=True,
+    min_periods=6,
+).mean()
+
+ax = food_sales.plot(**plot_params, alpha=0.5)
+ax = trend.plot(ax=ax, linewidth=3)
+
+trend = average_sales.rolling(
+    window=365,
+    center=True,
+    min_periods=183,
+).mean()
+
+ax = average_sales.plot(**plot_params, alpha=0.5)
+ax = trend.plot(ax=ax, linewidth=3)
+
+
+from statsmodels.tsa.deterministic import DeterministicProcess
+
+y = average_sales.copy()  # the target
+
+dp = DeterministicProcess(
+    index = y.index,
+    order=3,
+    drop=True
+)
+X = dp.in_sample()
+X_fore = dp.out_of_sample(steps=90)
+
+model = LinearRegression()
+model.fit(X, y)
+
+y_pred = pd.Series(model.predict(X), index=X.index)
+y_fore = pd.Series(model.predict(X_fore), index=X_fore.index)
+
+ax = y.plot(**plot_params, alpha=0.5, title="Average Sales", ylabel="items sold")
+ax = y_pred.plot(ax=ax, linewidth=3, label="Trend", color='C0')
+ax = y_fore.plot(ax=ax, linewidth=3, label="Trend Forecast", color='C3')
+ax.legend();
+
+from statsmodels.tsa.deterministic import DeterministicProcess
+
+dp = DeterministicProcess(index=y.index, order=11)
+X = dp.in_sample()
+
+model = LinearRegression()
+model.fit(X, y)
+
+y_pred = pd.Series(model.predict(X), index=X.index)
+
+ax = y.plot(**plot_params, alpha=0.5, title="Average Sales", ylabel="items sold")
+ax = y_pred.plot(ax=ax, linewidth=3, label="Trend", color='C0')
+ax.legend();
+
+X_fore = dp.out_of_sample(steps=90)
+y_fore = pd.Series(model.predict(X_fore), index=X_fore.index)
+
+ax = y.plot(**plot_params, alpha=0.5, title="Average Sales", ylabel="items sold")
+ax = y_pred.plot(ax=ax, linewidth=3, label="Trend", color='C0')
+ax = y_fore.plot(ax=ax, linewidth=3, label="Trend Forecast", color='C3')
+ax.legend();
 # %%
