@@ -475,6 +475,131 @@ y_fore = pd.Series(model.predict(X_test), index=y_test.index)
 ax = y_test.plot(**plot_params)
 _ = y_fore.plot(ax=ax, color='C3')
 
+#hibrid
+
+from xgboost import XGBRegressor
+
+
+simplefilter("ignore")
+
+# Set Matplotlib defaults
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rc(
+    "figure",
+    autolayout=True,
+    figsize=(11, 4),
+    titlesize=18,
+    titleweight='bold',
+)
+plt.rc(
+    "axes",
+    labelweight="bold",
+    labelsize="large",
+    titleweight="bold",
+    titlesize=16,
+    titlepad=10,
+)
+plot_params = dict(
+    color="0.75",
+    style=".-",
+    markeredgecolor="0.25",
+    markerfacecolor="0.25",
+)
+
+industries = ["BuildingMaterials", "FoodAndBeverage"]
+retail = pd.read_csv("us-retail-sales.csv",
+    usecols=['Month'] + industries,
+    parse_dates=['Month'],
+    index_col='Month',
+).to_period('D').reindex(columns=industries)
+retail = pd.concat({'Sales': retail}, names=[None, 'Industries'], axis=1)
+
+retail.head()
+
+
+
+y = retail.copy()
+
+# Create trend features
+dp = DeterministicProcess(
+    index=y.index,  # dates from the training data
+    constant=True,  # the intercept
+    order=2,        # quadratic trend
+    drop=True,      # drop terms to avoid collinearity
+)
+X = dp.in_sample()  # features for the training data
+
+# Test on the years 2016-2019. It will be easier for us later if we
+# split the date index instead of the dataframe directly.
+idx_train, idx_test = train_test_split(
+    y.index, test_size=12 * 4, shuffle=False,
+)
+X_train, X_test = X.loc[idx_train, :], X.loc[idx_test, :]
+y_train, y_test = y.loc[idx_train], y.loc[idx_test]
+
+# Fit trend model
+model = LinearRegression(fit_intercept=False)
+model.fit(X_train, y_train)
+
+# Make predictions
+y_fit = pd.DataFrame(
+    model.predict(X_train),
+    index=y_train.index,
+    columns=y_train.columns,
+)
+y_pred = pd.DataFrame(
+    model.predict(X_test),
+    index=y_test.index,
+    columns=y_test.columns,
+)
+
+# Plot
+axs = y_train.plot(color='0.25', subplots=True, sharex=True)
+axs = y_test.plot(color='0.25', subplots=True, sharex=True, ax=axs)
+axs = y_fit.plot(color='C0', subplots=True, sharex=True, ax=axs)
+axs = y_pred.plot(color='C3', subplots=True, sharex=True, ax=axs)
+for ax in axs: ax.legend([])
+_ = plt.suptitle("Trends")
+
+
+X = retail.stack()  # pivot dataset wide to long
+display(X.head())
+y = X.pop('Sales')  # grab target series
+X = X.reset_index('Industries')
+# Label encoding for 'Industries' feature
+for colname in X.select_dtypes(["object", "category"]):
+    X[colname], _ = X[colname].factorize()
+
+X["Month"] = X.index.month  # values are 1, 2, ..., 12
+
+# Create splits
+X_train, X_test = X.loc[idx_train, :], X.loc[idx_test, :]
+y_train, y_test = y.loc[idx_train], y.loc[idx_test]
+y_fit = y_fit.stack().squeeze()    # trend from training set
+y_pred = y_pred.stack().squeeze()  # trend from test set
+
+y_resid = y_train - y_fit
+
+xgb = XGBRegressor()
+xgb.fit(X_train, y_resid)
+
+y_fit_boosted = xgb.predict(X_train) + y_fit
+y_pred_boosted = xgb.predict(X_test) + y_pred
+
+axs = y_train.unstack(['Industries']).plot(
+    color='0.25', figsize=(11, 5), subplots=True, sharex=True,
+    title=['BuildingMaterials', 'FoodAndBeverage'],
+)
+axs = y_test.unstack(['Industries']).plot(
+    color='0.25', subplots=True, sharex=True, ax=axs,
+)
+axs = y_fit_boosted.unstack(['Industries']).plot(
+    color='C0', subplots=True, sharex=True, ax=axs,
+)
+axs = y_pred_boosted.unstack(['Industries']).plot(
+    color='C3', subplots=True, sharex=True, ax=axs,
+)
+for ax in axs: ax.legend([])
 #%%
 #gyak
 #1gyak Linear Regression With Time Series
@@ -924,4 +1049,126 @@ mean_7 = y_lag.rolling(7).mean()
 median_14 = y_lag.rolling(14).median()
 std_7 = y_lag.rolling(7).std()
 promo_7 = onpromo.rolling(7, center=True).sum()
+
+store_sales = pd.read_csv('train.csv',
+    usecols=['store_nbr', 'family', 'date', 'sales', 'onpromotion'],
+    dtype={
+        'store_nbr': 'category',
+        'family': 'category',
+        'sales': 'float32',
+    },
+    parse_dates=['date'],
+)
+store_sales['date'] = store_sales.date.dt.to_period('D')
+store_sales = store_sales.set_index(['store_nbr', 'family', 'date']).sort_index()
+
+family_sales = (
+    store_sales
+    .groupby(['family', 'date'])
+    .mean()
+    .unstack('family')
+    .loc['2017']
+)
+
+class BoostedHybrid:
+    def __init__(self, model_1, model_2):
+        self.model_1 = model_1
+        self.model_2 = model_2
+        self.y_columns = None
+
+def fit(self, X_1, X_2, y):
+    self.model_1.fit(X_1,y)
+    y_fit= pd.DataFrame(
+        self.model_1.predict(X_1),
+        index=X_1.index, columns=y.columns,
+    )
+    y_resid = y- y_fit
+    y_resid = y_resid.stack().squeeze()
+    self.model_2.fit(X_2,y_resid)
+    self.y_columns = y.columns
+    # Save data for question checking
+    self.y_fit = y_fit
+    self.y_resid = y_resid
+
+
+# Add method to class
+BoostedHybrid.fit = fit
+
+def predict(self, X_1, X_2):
+    y_pred = pd.DataFrame(
+        # YOUR CODE HERE: predict with self.model_1
+        self.model_1.predict(X_1),
+        index=X_1.index, columns=self.y_columns,
+    )
+    y_pred = y_pred.stack().squeeze()  # wide to long
+
+    # YOUR CODE HERE: add self.model_2 predictions to y_pred
+    y_pred += self.model_2.predict(X_2)
+    
+    return y_pred.unstack()  # long to wide
+
+
+# Add method to class
+BoostedHybrid.predict = predict
+
+# Target series
+y = family_sales.loc[:, 'sales']
+
+
+# X_1: Features for Linear Regression
+dp = DeterministicProcess(index=y.index, order=1)
+X_1 = dp.in_sample()
+
+from sklearn.preprocessing import LabelEncoder
+# X_2: Features for XGBoost
+X_2 = family_sales.drop('sales', axis=1).stack()  # onpromotion feature
+LabelEncoder()
+# Label encoding for 'family'
+le = LabelEncoder()  # from sklearn.preprocessing
+X_2 = X_2.reset_index('family')
+X_2['family'] = le.fit_transform(X_2['family'])
+
+# Label encoding for seasonality
+X_2["day"] = X_2.index.day  # values are day of the month
+
+model = BoostedHybrid(model_1=LinearRegression(), model_2=XGBRegressor(),)
+model.fit(X_1,X_2,y)
+y_pred = model.predict(X_1,X_2)
+y_pred = y_pred.clip(0.0)
+
+# Model 1 (trend)
+from sklearn.linear_model import ElasticNet, Lasso, Ridge
+
+# Model 2
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
+
+# Boosted Hybrid
+
+# YOUR CODE HERE: Try different combinations of the algorithms above
+model = BoostedHybrid(
+    model_1=Ridge(),
+    model_2=KNeighborsRegressor(),
+)
+y_train, y_valid = y[:"2017-07-01"], y["2017-07-02":]
+X1_train, X1_valid = X_1[: "2017-07-01"], X_1["2017-07-02" :]
+X2_train, X2_valid = X_2.loc[:"2017-07-01"], X_2.loc["2017-07-02":]
+
+# Some of the algorithms above do best with certain kinds of
+# preprocessing on the features (like standardization), but this is
+# just a demo.
+model.fit(X1_train, X2_train, y_train)
+y_fit = model.predict(X1_train, X2_train).clip(0.0)
+y_pred = model.predict(X1_valid, X2_valid).clip(0.0)
+
+families = y.columns[0:6]
+axs = y.loc(axis=1)[families].plot(
+    subplots=True, sharex=True, figsize=(11, 9), **plot_params, alpha=0.5,
+)
+_ = y_fit.loc(axis=1)[families].plot(subplots=True, sharex=True, color='C0', ax=axs)
+_ = y_pred.loc(axis=1)[families].plot(subplots=True, sharex=True, color='C3', ax=axs)
+for ax, family in zip(axs, families):
+    ax.legend([])
+    ax.set_ylabel(family)
 #%%
