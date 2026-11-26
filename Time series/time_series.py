@@ -604,7 +604,7 @@ for ax in axs: ax.legend([])
 N = 20
 ts = pd.Series(
     np.arange(N),
-    index=pd.period_range(start='2010', freq='A', periods=N, name='Year'),
+    index=pd.period_range(start='2010', freq='Y', periods=N, name='Year'),
     dtype=pd.Int8Dtype,
 )
 
@@ -696,9 +696,9 @@ model.fit(X_train, y_train)
 
 y_fit = pd.DataFrame(model.predict(X_train), index=X_train.index, columns=y.columns)
 y_pred = pd.DataFrame(model.predict(X_test), index=X_test.index, columns=y.columns)
-
-train_rmse = mean_squared_error(y_train, y_fit, squared=False)
-test_rmse = mean_squared_error(y_test, y_pred, squared=False)
+from sklearn.metrics import mean_squared_error
+train_rmse = mean_squared_error(y_train, y_fit)
+test_rmse = mean_squared_error(y_test, y_pred)
 print((f"Train RMSE: {train_rmse:.2f}\n" f"Test RMSE: {test_rmse:.2f}"))
 
 palette = dict(palette='husl', n_colors=64)
@@ -718,8 +718,8 @@ model.fit(X_train, y_train)
 y_fit = pd.DataFrame(model.predict(X_train), index=X_train.index, columns=y.columns)
 y_pred = pd.DataFrame(model.predict(X_test), index=X_test.index, columns=y.columns)
 
-train_rmse = mean_squared_error(y_train, y_fit, squared=False)
-test_rmse = mean_squared_error(y_test, y_pred, squared=False)
+train_rmse = mean_squared_error(y_train, y_fit)
+test_rmse = mean_squared_error(y_test, y_pred)
 print((f"Train RMSE: {train_rmse:.2f}\n" f"Test RMSE: {test_rmse:.2f}"))
 
 palette = dict(palette='husl', n_colors=64)
@@ -1301,4 +1301,94 @@ _ = y_pred.loc(axis=1)[families].plot(subplots=True, sharex=True, color='C3', ax
 for ax, family in zip(axs, families):
     ax.legend([])
     ax.set_ylabel(family)
+
+store_sales = pd.read_csv('train.csv',
+    usecols=['store_nbr', 'family', 'date', 'sales', 'onpromotion'],
+    dtype={
+        'store_nbr': 'category',
+        'family': 'category',
+        'sales': 'float32',
+        'onpromotion': 'uint32',
+    },
+    parse_dates=['date'],
+)
+store_sales['date'] = store_sales.date.dt.to_period('D')
+store_sales = store_sales.set_index(['store_nbr', 'family', 'date']).sort_index()
+
+family_sales = (
+    store_sales
+    .groupby(['family', 'date'])
+    .mean()
+    .unstack('family')
+    .loc['2017']
+)
+test = pd.read_csv('test.csv',
+    dtype={
+        'store_nbr': 'category',
+        'family': 'category',
+        'onpromotion': 'uint32',
+    },
+    parse_dates=['date'],
+)
+test['date'] = test.date.dt.to_period('D')
+test = test.set_index(['store_nbr', 'family', 'date']).sort_index()
+
+datasets = load_multistep_data()
+
+data_tabs = widgets.Tab([widgets.Output() for _ in enumerate(datasets)])
+for i, df in enumerate(datasets):
+    data_tabs.set_title(i, f'Dataset {i+1}')
+    with data_tabs.children[i]:
+        display(df)
+
+display(data_tabs)
+task_a = 2
+task_b = 1
+task_c = 3
+
+print("Training Data", "\n" + "-" * 13 + "\n", store_sales)
+print("\n")
+print("Test Data", "\n" + "-" * 9 + "\n", test)
+y = family_sales.loc[:, 'sales']
+
+# YOUR CODE HERE: Make 4 lag features
+X = make_lags(y,lags=4).dropna()
+
+# YOUR CODE HERE: Make multistep target
+y = make_multistep_target(y,steps=16).dropna()
+
+y, X = y.align(X, join='inner', axis=0)
+le = LabelEncoder()
+X = (X
+    .stack('family')  # wide to long
+    .reset_index('family')  # convert index to column
+    .assign(family=lambda x: le.fit_transform(x.family))  # label encode
+)
+y = y.stack('family')  # wide to long
+
+display(y)
+from sklearn.multioutput import RegressorChain
+
+# YOUR CODE HERE
+model = RegressorChain(base_estimator=XGBRegressor())
+model.fit(X, y)
+
+y_pred = pd.DataFrame(
+    model.predict(X),
+    index=y.index,
+    columns=y.columns,
+).clip(0.0)
+FAMILY = 'BEAUTY'
+START = '2017-04-01'
+EVERY = 16
+
+y_pred_ = y_pred.xs(FAMILY, level='family', axis=0).loc[START:]
+y_ = family_sales.loc[START:, 'sales'].loc[:, FAMILY]
+
+fig, ax = plt.subplots(1, 1, figsize=(11, 4))
+ax = y_.plot(**plot_params, ax=ax, alpha=0.5)
+ax = plot_multistep(y_pred_, ax=ax, every=EVERY)
+_ = ax.legend([FAMILY, FAMILY + ' Forecast'])
+
+
 #%%
